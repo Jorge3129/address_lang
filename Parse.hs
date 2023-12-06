@@ -15,7 +15,7 @@ infOp :: String -> (a -> a -> a) -> Parser (a -> a -> a)
 infOp x f = string x >> return f
 
 wspaces :: Parser ()
-wspaces =  do { many (oneOf " \t"); return () }
+wspaces = do many (oneOf " \t"); return ()
 
 lexem :: Parser a -> Parser a
 lexem p = do a <- p; wspaces; return a

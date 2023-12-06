@@ -154,12 +154,12 @@ runProgram (Program pLines) ps =
           (Reg 0, ps)
    in finalState
 
-runProgramStep :: [ProgLine] -> LabelDict ->  (Infinitable, ProgramState) -> (Infinitable, ProgramState)
-runProgramStep pLines labelDict (Reg lineIndex, curProgState) = 
+runProgramStep :: [ProgLine] -> LabelDict -> (Infinitable, ProgramState) -> (Infinitable, ProgramState)
+runProgramStep pLines labelDict (Reg lineIndex, curProgState) =
   let pLine = pLines !! lineIndex
       (newProgState, jumpToLine) = runProgLine' pLine curProgState labelDict
       nextLine = fromMaybe (Reg (lineIndex + 1)) jumpToLine
-  in (nextLine, newProgState)
+   in (nextLine, newProgState)
 runProgramStep _ _ _ = error "Wrong line index"
 
 scanUntil :: (a -> Bool) -> (a -> a) -> a -> [a]
