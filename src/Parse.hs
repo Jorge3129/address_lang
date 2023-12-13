@@ -86,7 +86,13 @@ eqTermA = chainl1 termA (lexem addopA)
 exprA = chainl1 eqTermA (lexem cmpOpA)
 
 statement :: Parser Statement
-statement = stopSt <|> try condSt <|> try assignSt <|> jumpSt
+statement = stopSt <|> try printSt <|> try condSt <|> try assignSt <|> jumpSt
+
+printSt :: Parser Statement
+printSt = do
+  lexem (string "print")
+  ex <- exprA
+  return (Print ex)
 
 assignSt :: Parser Statement
 assignSt = do

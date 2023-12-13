@@ -116,6 +116,10 @@ runStatement (Conditional ifExp thenSt elseSt) ps ld =
         then runStatement thenSt ps ld
         else runStatement elseSt ps ld
 --
+runStatement (Print ex) ps _ = do
+  print $ evalExp ex ps
+  return (ps, Nothing)
+--
 runStatement _ ps _ = pure (ps, Nothing)
 
 updateVars :: String -> Int -> VarState -> VarState

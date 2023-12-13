@@ -33,6 +33,7 @@ data Statement
   | Exchange Expr Expr
   | Conditional Expr Statement Statement
   | SubprogramCall [Expr] String (Maybe String)
+  | Print Expr
   | Jump String
   | Stop
 
@@ -56,6 +57,7 @@ instance Show Statement where
       ++ ")"
   show Stop = "!"
   show (Jump label) = label
+  show (Print ex) = "print " ++ show ex
 
 data ProgLine = ProgLine (Maybe String) [Statement]
 
