@@ -6,6 +6,7 @@ import AST
 import Data.Function (on)
 import Data.List (sortBy)
 import Data.Maybe (fromMaybe, isJust)
+import MyUtils
 
 type MemoryState = [(Int, Int)]
 
@@ -72,17 +73,15 @@ evalDerefAssign derefCount firstAddr rhsVal ms =
               [1 .. (derefCount - 1)]
    in updateMem finalAddr rhsVal updatedMem
 
-data Infinitable = NegInf | Reg Int | PosInf deriving (Show, Eq, Ord)
-
 -- Execute statement
-runStatement :: Statement -> ProgramState -> LabelDict -> (ProgramState, Maybe Infinitable)
+runStatement :: Statement -> ProgramState -> LabelDict -> IO (ProgramState, Maybe Infinitable)
 runStatement (Assignment (Var name) rhsExp) ps@(ms, vs) _ =
   let rhsVal = evalExp rhsExp ps
       addr = case lookup name vs of
         Just existingAddr -> existingAddr
         Nothing -> allocMem ms
       updatedPs = (updateMem addr rhsVal ms, updateVars name addr vs)
-   in (updatedPs, Nothing)
+   in pure (updatedPs, Nothing)
 --
 runStatement (Assignment (Deref derefExp) rhsExp) ps@(ms, vs) _ =
   let rhsVal = evalExp rhsExp ps
@@ -90,25 +89,25 @@ runStatement (Assignment (Deref derefExp) rhsExp) ps@(ms, vs) _ =
       firstAddr = evalExp innerExp ps
 
       finalMem = evalDerefAssign derefCount firstAddr rhsVal ms
-   in ((finalMem, vs), Nothing)
+   in pure ((finalMem, vs), Nothing)
 --
 runStatement (Assignment (MulDeref derefCount innerExp) rhsExp) ps@(ms, vs) _ =
   let rhsVal = evalExp rhsExp ps
       firstAddr = evalExp innerExp ps
 
       finalMem = evalDerefAssign derefCount firstAddr rhsVal ms
-   in ((finalMem, vs), Nothing)
+   in pure ((finalMem, vs), Nothing)
 --
 runStatement (Send valExp addrExp) ps@(ms, vs) _ =
   let rhsVal = evalExp valExp ps
       addr = evalExp addrExp ps
-   in ((updateMem addr rhsVal ms, vs), Nothing)
+   in pure ((updateMem addr rhsVal ms, vs), Nothing)
 --
-runStatement Stop ps _ = (ps, Just PosInf)
+runStatement Stop ps _ = pure (ps, Just PosInf)
 --
 runStatement (Jump label) ps labelDict =
   case lookup label labelDict of
-    Just lineNum -> (ps, Just (Reg lineNum))
+    Just lineNum -> pure (ps, Just (Reg lineNum))
     Nothing -> error ("Label " ++ show label ++ " not defined.")
 --
 runStatement (Conditional ifExp thenSt elseSt) ps ld =
@@ -117,7 +116,7 @@ runStatement (Conditional ifExp thenSt elseSt) ps ld =
         then runStatement thenSt ps ld
         else runStatement elseSt ps ld
 --
-runStatement _ ps _ = (ps, Nothing)
+runStatement _ ps _ = pure (ps, Nothing)
 
 updateVars :: String -> Int -> VarState -> VarState
 updateVars name addr vs = sortBy (compare `on` fst) ((name, addr) : [(nm, ad) | (nm, ad) <- vs, nm /= name])
@@ -125,42 +124,39 @@ updateVars name addr vs = sortBy (compare `on` fst) ((name, addr) : [(nm, ad) | 
 updateMem :: Int -> Int -> MemoryState -> MemoryState
 updateMem addr rhsVal ms = sortBy (compare `on` fst) ((addr, rhsVal) : [(ad, val) | (ad, val) <- ms, ad /= addr])
 
-runProgLine' :: ProgLine -> ProgramState -> LabelDict -> (ProgramState, Maybe Infinitable)
-runProgLine' (ProgLine _ stmts) ps labelDict =
+runProgLine' :: ProgLine -> ProgramState -> LabelDict -> IO (ProgramState, Maybe Infinitable)
+runProgLine' (ProgLine _ stmts) ps labelDict = do
   let stmtCount = length stmts
-      (_, updatedPs, jumpToLn) =
-        until
-          (\(stmtIndex, _, jumpToLine) -> isJust jumpToLine || stmtIndex >= stmtCount)
-          ( \(stmtIndex, curProgState, _) ->
-              let stmt = stmts !! stmtIndex
-                  (newProgState, jumpToLine) = runStatement stmt curProgState labelDict
-               in (stmtIndex + 1, newProgState, jumpToLine)
-          )
-          (0, ps, Nothing)
-   in (updatedPs, jumpToLn)
+  (_, updatedPs, jumpToLn) <-
+    untilM
+      (\(stmtIndex, _, jumpToLine) -> isJust jumpToLine || stmtIndex >= stmtCount)
+      ( \(stmtIndex, curProgState, _) -> do
+          let stmt = stmts !! stmtIndex
+          (newProgState, jumpToLine) <- runStatement stmt curProgState labelDict
+          return (stmtIndex + 1, newProgState, jumpToLine)
+      )
+      (0, ps, Nothing)
+  return (updatedPs, jumpToLn)
 
-runProgLine :: ProgLine -> ProgramState -> LabelDict -> ProgramState
-runProgLine pl ps labelDict = fst (runProgLine' pl ps labelDict)
+runProgLine :: ProgLine -> ProgramState -> LabelDict -> IO ProgramState
+runProgLine pl ps labelDict = fmap fst (runProgLine' pl ps labelDict)
 
-runProgram :: Program -> ProgramState -> ProgramState
-runProgram (Program pLines) ps =
+runProgram :: Program -> ProgramState -> IO ProgramState
+runProgram (Program pLines) ps = do
   let labels = map (\(ProgLine lbl _) -> fromMaybe "" lbl) pLines
-      labelDict = zip labels [0 ..]
-      pLineCount = length pLines
-      (_, finalState) =
-        until
-          (\(ln, _) -> ln >= Reg pLineCount)
-          (runProgramStep pLines labelDict)
-          (Reg 0, ps)
-   in finalState
+  let labelDict = zip labels [0 ..]
+  let pLineCount = length pLines
+  (_, finalState) <-
+    untilM
+      (\(ln, _) -> ln >= Reg pLineCount)
+      (runProgramStep pLines labelDict)
+      (Reg 0, ps)
+  return finalState
 
-runProgramStep :: [ProgLine] -> LabelDict -> (Infinitable, ProgramState) -> (Infinitable, ProgramState)
-runProgramStep pLines labelDict (Reg lineIndex, curProgState) =
+runProgramStep :: [ProgLine] -> LabelDict -> (Infinitable, ProgramState) -> IO (Infinitable, ProgramState)
+runProgramStep pLines labelDict (Reg lineIndex, curProgState) = do
   let pLine = pLines !! lineIndex
-      (newProgState, jumpToLine) = runProgLine' pLine curProgState labelDict
-      nextLine = fromMaybe (Reg (lineIndex + 1)) jumpToLine
-   in (nextLine, newProgState)
+  (newProgState, jumpToLine) <- runProgLine' pLine curProgState labelDict
+  let nextLine = fromMaybe (Reg (lineIndex + 1)) jumpToLine
+  return (nextLine, newProgState)
 runProgramStep _ _ _ = error "Wrong line index"
-
-scanUntil :: (a -> Bool) -> (a -> a) -> a -> [a]
-scanUntil p f initial = takeWhile (not . p) $ iterate f initial

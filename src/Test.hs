@@ -14,5 +14,6 @@ main = do
   contents <- hGetContents fileHandle
   --   putStrLn contents
   let parsedAST = parseOrThrow parseProg contents
-  print (runProgram parsedAST ([], []))
+  result <- runProgram parsedAST ([], [])
+  print result
   hClose fileHandle
