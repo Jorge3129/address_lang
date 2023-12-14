@@ -25,7 +25,7 @@ evalExp (Var name) (ms, vs) = case lookup name vs of
     Nothing -> error ("Variable " ++ name ++ " has no value in memory.")
   Nothing -> error ("Variable " ++ name ++ " is not defined.")
 --
-evalExp (BinOpApp op rhs lhs) ps = case op of
+evalExp (BinOpApp op lhs rhs) ps = case op of
   Add -> evalExp lhs ps + evalExp rhs ps
   Sub -> evalExp lhs ps - evalExp rhs ps
   Mul -> evalExp lhs ps * evalExp rhs ps
@@ -38,6 +38,7 @@ evalExp (Deref expr) ps@(ms, _) =
    in case lookup addr ms of
         Just val -> val
         Nothing -> error ("Memory at address " ++ show addr ++ " has no value.")
+--
 evalExp (MulDeref derefCount innerExp) ps =
   let innerExpVal = evalExp (Deref innerExp) ps
    in if derefCount == 1
