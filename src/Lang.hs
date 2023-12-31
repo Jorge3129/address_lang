@@ -46,10 +46,11 @@ evalExp (Deref expr) ps@(ms, _) =
         Nothing -> error ("Memory at address " ++ show addr ++ " has no value.")
 --
 evalExp (MulDeref derefCount innerExp) ps =
-  let innerExpVal = evalExp (Deref innerExp) ps
-   in if derefCount == 1
-        then innerExpVal
-        else evalExp (MulDeref (derefCount - 1) (Lit innerExpVal)) ps
+  case derefCount of
+    1 -> innerExpVal
+    cnt -> evalExp (MulDeref (cnt - 1) (Lit innerExpVal)) ps
+  where
+    innerExpVal = evalExp (Deref innerExp) ps
 
 allocMem :: MemoryState -> Int
 allocMem ms
@@ -94,14 +95,12 @@ runStatement (Assignment (Deref derefExp) rhsExp) ps@(ms, vs) _ =
   let rhsVal = evalExp rhsExp ps
       (innerExp, derefCount) = countDerefs derefExp 1
       firstAddr = evalExp innerExp ps
-
       finalMem = evalDerefAssign derefCount firstAddr rhsVal ms
    in pure ((finalMem, vs), Nothing)
 --
 runStatement (Assignment (MulDeref derefCount innerExp) rhsExp) ps@(ms, vs) _ =
   let rhsVal = evalExp rhsExp ps
       firstAddr = evalExp innerExp ps
-
       finalMem = evalDerefAssign derefCount firstAddr rhsVal ms
    in pure ((finalMem, vs), Nothing)
 --
@@ -117,11 +116,11 @@ runStatement (Jump label) ps labelDict =
     Just lineNum -> pure (ps, Just (Reg lineNum))
     Nothing -> error ("Label " ++ show label ++ " not defined.")
 --
-runStatement (Conditional ifExp thenSt elseSt) ps ld =
-  let ifExpVal = evalExp ifExp ps
-   in if ifExpVal /= 0
-        then runStatement thenSt ps ld
-        else runStatement elseSt ps ld
+runStatement (Conditional ifExp thenSt elseSt) ps ld = runStatement st ps ld
+  where
+    st = case evalExp ifExp ps of
+      0 -> elseSt
+      _ -> thenSt
 --
 runStatement (Print ex) ps _ = do
   print $ evalExp ex ps
