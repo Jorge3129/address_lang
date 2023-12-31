@@ -149,8 +149,8 @@ runProgLine pl ps labelDict = fmap fst (runProgLine' pl ps labelDict)
 runProgram :: Program -> ProgramState -> IO ProgramState
 runProgram (Program pLines) ps = do
   let labels = map (\(ProgLine lbl _) -> fromMaybe "" lbl) pLines
-  let labelDict = zip labels [0 ..]
-  let pLineCount = length pLines
+      labelDict = zip labels [0 ..]
+      pLineCount = length pLines
   (_, finalState) <-
     untilM
       (\(ln, _) -> ln >= Reg pLineCount)
