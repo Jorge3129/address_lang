@@ -1,6 +1,7 @@
 module Parse where
 
 import AST
+import Control.Monad (void)
 import Text.Parsec (endOfLine)
 import Text.ParserCombinators.Parsec
 
@@ -15,42 +16,32 @@ infOp :: String -> (a -> a -> a) -> Parser (a -> a -> a)
 infOp x f = string x >> return f
 
 wspaces :: Parser ()
-wspaces = do many (oneOf " \t"); return ()
+wspaces = void $ many (oneOf " \t")
 
 lexem :: Parser a -> Parser a
 lexem p = do a <- p; wspaces; return a
 
 reserved :: String -> Parser ()
-reserved s = do _ <- string s; wspaces
+reserved s = string s >> wspaces
 
 parens :: Parser a -> Parser a
 parens p = do reserved "("; n <- lexem p; reserved ")"; return n
 
 int :: Parser Expr
-int = do n <- lexem number; return (Lit n)
-
-latinAlf :: String
-latinAlf = ['A' .. 'Z'] ++ ['a' .. 'z']
-
-nums :: String
-nums = ['0' .. '9']
-
-firstLetter :: String
-firstLetter = latinAlf
-
-subseqLetter :: String
-subseqLetter = latinAlf ++ nums ++ "_$#@"
+int = Lit <$> lexem number
 
 idf :: Parser String
 idf = do
+  let latinAlf = ['A' .. 'Z'] ++ ['a' .. 'z']
+      nums = ['0' .. '9']
+      firstLetter = latinAlf
+      subseqLetter = latinAlf ++ nums ++ "_$#@"
   st <- oneOf firstLetter
   nx <- many (oneOf subseqLetter)
   return (st : nx)
 
 idp :: Parser Expr
-idp = do
-  st <- lexem idf
-  return (Var st)
+idp = Var <$> lexem idf
 
 -- ARITHMETIC
 addopA, mulopA :: Parser (Expr -> Expr -> Expr)
@@ -62,15 +53,11 @@ cmpOpA =
     <|> infOp "<" (BinOpApp Less)
 
 deref :: Parser Expr
-deref = do
-  string "'"
-  innerExp <- parens exprA
-  return (Deref innerExp)
+deref = do string "'"; Deref <$> parens exprA
 
 mulDeref :: Parser Expr
 mulDeref = do
   string "`"
-  -- powerExp <- parens exprA
   n <- lexem number
   string "`"
   innerExp <- parens exprA
@@ -91,8 +78,7 @@ statement = stopSt <|> try printSt <|> try condSt <|> try assignSt <|> jumpSt
 printSt :: Parser Statement
 printSt = do
   lexem (string "print")
-  ex <- exprA
-  return (Print ex)
+  Print <$> exprA
 
 assignSt :: Parser Statement
 assignSt = do
