@@ -16,6 +16,10 @@ type ProgramState = (MemoryState, VarState)
 
 type LabelDict = [(String, Int)]
 
+boolToInt :: Bool -> Int
+boolToInt True = 1
+boolToInt False = 0
+
 evalExp :: Expr -> ProgramState -> Int
 evalExp (Lit val) _ = val
 --
@@ -25,13 +29,16 @@ evalExp (Var name) (ms, vs) = case lookup name vs of
     Nothing -> error ("Variable " ++ name ++ " has no value in memory.")
   Nothing -> error ("Variable " ++ name ++ " is not defined.")
 --
-evalExp (BinOpApp op lhs rhs) ps = case op of
-  Add -> evalExp lhs ps + evalExp rhs ps
-  Sub -> evalExp lhs ps - evalExp rhs ps
-  Mul -> evalExp lhs ps * evalExp rhs ps
-  Div -> evalExp lhs ps `div` evalExp rhs ps
-  Less -> if evalExp lhs ps < evalExp rhs ps then 1 else 0
-  Equal -> if evalExp lhs ps == evalExp rhs ps then 1 else 0
+evalExp (BinOpApp op lhs rhs) ps = binOp $ case op of
+  Add -> (+)
+  Sub -> (-)
+  Mul -> (*)
+  Div -> div
+  Less -> (\x y -> boolToInt (x < y))
+  Equal -> (\x y -> boolToInt (x == y))
+  where
+    binOp :: (Int -> Int -> a) -> a
+    binOp f = f (evalExp lhs ps) (evalExp rhs ps)
 --
 evalExp (Deref expr) ps@(ms, _) =
   let addr = evalExp expr ps
