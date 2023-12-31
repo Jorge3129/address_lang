@@ -88,14 +88,12 @@ assignSt = do
   return (Assignment lhs rhs)
 
 jumpSt :: Parser Statement
-jumpSt = do
-  label <- lexem idf
-  return (Jump label)
+jumpSt = Jump <$> lexem idf
 
 stopSt :: Parser Statement
 stopSt = do
   reserved "!"
-  return (Stop)
+  return Stop
 
 condSt :: Parser Statement
 condSt = do

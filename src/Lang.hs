@@ -3,18 +3,17 @@
 module Lang where
 
 import AST
-import Data.Function (on)
-import Data.List (sortBy)
+import Data.Map (Map, fromList, insert, keys, lookup, null)
 import Data.Maybe (fromMaybe, isJust)
 import MyUtils
 
-type MemoryState = [(Int, Int)]
+type MemoryState = Map Int Int
 
-type VarState = [(String, Int)]
+type VarState = Map String Int
 
 type ProgramState = (MemoryState, VarState)
 
-type LabelDict = [(String, Int)]
+type LabelDict = Map String Int
 
 boolToInt :: Bool -> Int
 boolToInt True = 1
@@ -23,8 +22,8 @@ boolToInt False = 0
 evalExp :: Expr -> ProgramState -> Int
 evalExp (Lit val) _ = val
 --
-evalExp (Var name) (ms, vs) = case lookup name vs of
-  Just addr -> case lookup addr ms of
+evalExp (Var name) (ms, vs) = case Data.Map.lookup name vs of
+  Just addr -> case Data.Map.lookup addr ms of
     Just val -> val
     Nothing -> error ("Variable " ++ name ++ " has no value in memory.")
   Nothing -> error ("Variable " ++ name ++ " is not defined.")
@@ -42,7 +41,7 @@ evalExp (BinOpApp op lhs rhs) ps = binOp $ case op of
 --
 evalExp (Deref expr) ps@(ms, _) =
   let addr = evalExp expr ps
-   in case lookup addr ms of
+   in case Data.Map.lookup addr ms of
         Just val -> val
         Nothing -> error ("Memory at address " ++ show addr ++ " has no value.")
 --
@@ -53,14 +52,14 @@ evalExp (MulDeref derefCount innerExp) ps =
         else evalExp (MulDeref (derefCount - 1) (Lit innerExpVal)) ps
 
 allocMem :: MemoryState -> Int
-allocMem ms = case ms of
-  [] -> 10
-  _ -> maximum (map fst ms) + 10
+allocMem ms
+  | Data.Map.null ms = 10
+  | otherwise = maximum (keys ms) + 10
 
 allocMem1 :: MemoryState -> Int -> Int
-allocMem1 ms newAddr = case ms of
-  [] -> max newAddr 0 + 10
-  _ -> max newAddr (maximum (map fst ms)) + 10
+allocMem1 ms newAddr
+  | Data.Map.null ms = max newAddr 0 + 10
+  | otherwise = max newAddr (maximum (keys ms)) + 10
 
 countDerefs :: Expr -> Int -> (Expr, Int)
 countDerefs (Deref expr) curCount = countDerefs expr (curCount + 1)
@@ -85,7 +84,7 @@ evalDerefAssign derefCount firstAddr rhsVal ms =
 runStatement :: Statement -> ProgramState -> LabelDict -> IO (ProgramState, Maybe Infinitable)
 runStatement (Assignment (Var name) rhsExp) ps@(ms, vs) _ =
   let rhsVal = evalExp rhsExp ps
-      addr = case lookup name vs of
+      addr = case Data.Map.lookup name vs of
         Just existingAddr -> existingAddr
         Nothing -> allocMem ms
       updatedPs = (updateMem addr rhsVal ms, updateVars name addr vs)
@@ -114,7 +113,7 @@ runStatement (Send valExp addrExp) ps@(ms, vs) _ =
 runStatement Stop ps _ = pure (ps, Just PosInf)
 --
 runStatement (Jump label) ps labelDict =
-  case lookup label labelDict of
+  case Data.Map.lookup label labelDict of
     Just lineNum -> pure (ps, Just (Reg lineNum))
     Nothing -> error ("Label " ++ show label ++ " not defined.")
 --
@@ -131,10 +130,10 @@ runStatement (Print ex) ps _ = do
 runStatement _ ps _ = pure (ps, Nothing)
 
 updateVars :: String -> Int -> VarState -> VarState
-updateVars name addr vs = sortBy (compare `on` fst) ((name, addr) : [(nm, ad) | (nm, ad) <- vs, nm /= name])
+updateVars = insert
 
 updateMem :: Int -> Int -> MemoryState -> MemoryState
-updateMem addr rhsVal ms = sortBy (compare `on` fst) ((addr, rhsVal) : [(ad, val) | (ad, val) <- ms, ad /= addr])
+updateMem = insert
 
 runProgLine' :: ProgLine -> ProgramState -> LabelDict -> IO (ProgramState, Maybe Infinitable)
 runProgLine' (ProgLine _ stmts) ps labelDict = do
@@ -156,7 +155,7 @@ runProgLine pl ps labelDict = fmap fst (runProgLine' pl ps labelDict)
 runProgram :: Program -> ProgramState -> IO ProgramState
 runProgram (Program pLines) ps = do
   let labels = map (\(ProgLine lbl _) -> fromMaybe "" lbl) pLines
-      labelDict = zip labels [0 ..]
+      labelDict = fromList $ zip labels [0 ..]
       pLineCount = length pLines
   (_, finalState) <-
     untilM
