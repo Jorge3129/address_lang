@@ -27,11 +27,11 @@ reserved s = string s >> wspaces
 parens :: Parser a -> Parser a
 parens p = do reserved "("; n <- lexem p; reserved ")"; return n
 
-int :: Parser Expr
-int = Lit <$> lexem number
+constant :: Parser Expr
+constant = Lit <$> lexem number
 
-idf :: Parser String
-idf = do
+identifierString :: Parser String
+identifierString = do
   let latinAlf = ['A' .. 'Z'] ++ ['a' .. 'z']
       nums = ['0' .. '9']
       firstLetter = latinAlf
@@ -40,55 +40,73 @@ idf = do
   nx <- many (oneOf subseqLetter)
   return (st : nx)
 
-idp :: Parser Expr
-idp = Var <$> lexem idf
+identifier :: Parser Expr
+identifier = Var <$> lexem identifierString
 
 -- ARITHMETIC
-addopA, mulopA :: Parser (Expr -> Expr -> Expr)
+addopA, mulopA, cmpOpA :: Parser (Expr -> Expr -> Expr)
 addopA = infOp "+" (BinOpApp Add) <|> infOp "-" (BinOpApp Sub)
 mulopA = infOp "*" (BinOpApp Mul) <|> infOp "/" (BinOpApp Div)
-
 cmpOpA =
   infOp "==" (BinOpApp Equal)
     <|> infOp "<" (BinOpApp Less)
 
 deref :: Parser Expr
-deref = do string "'"; Deref <$> parens exprA
+deref = do string "'"; Deref <$> parens expression
+
+deref' :: Parser Expr -> Parser Expr
+deref' p = do string "'"; Deref <$> p
 
 mulDeref :: Parser Expr
 mulDeref = do
   string "`"
   n <- lexem number
   string "`"
-  innerExp <- parens exprA
-  return (MulDeref n innerExp)
+  MulDeref n <$> parens expression
+
+mulDeref' :: Parser Expr -> Parser Expr
+mulDeref' p = do
+  string "`"
+  n <- lexem number
+  string "`"
+  MulDeref n <$> parens p
 
 -- EXPRESSIONS
-exprA, termA, factorA :: Parser Expr
-factorA = int <|> idp <|> deref <|> mulDeref <|> parens exprA
-termA = chainl1 factorA (lexem mulopA)
+expression :: Parser Expr
+expression = chainl1 relExpr (lexem cmpOpA)
 
-eqTermA = chainl1 termA (lexem addopA)
+relExpr :: Parser Expr
+relExpr = chainl1 mulExpr (lexem addopA)
 
-exprA = chainl1 eqTermA (lexem cmpOpA)
+mulExpr :: Parser Expr
+mulExpr = chainl1 unaryExpr (lexem mulopA)
 
+unaryExpr :: Parser Expr
+unaryExpr = deref' unaryExpr <|> mulDeref' unaryExpr <|> primaryExpr
+
+primaryExpr :: Parser Expr
+primaryExpr = constant <|> identifier <|> parens expression
+
+-- STATEMENTS
 statement :: Parser Statement
 statement = stopSt <|> try printSt <|> try condSt <|> try assignSt <|> jumpSt
 
 printSt :: Parser Statement
 printSt = do
   lexem (string "print")
-  Print <$> exprA
+  Print <$> expression
+
+assignLhs :: Parser Expr
+assignLhs = lexem $ identifier <|> deref' unaryExpr <|> mulDeref' unaryExpr
 
 assignSt :: Parser Statement
 assignSt = do
-  lhs <- lexem (idp <|> deref <|> mulDeref)
+  lhs <- assignLhs
   reserved "="
-  rhs <- exprA
-  return (Assignment lhs rhs)
+  Assignment lhs <$> expression
 
 jumpSt :: Parser Statement
-jumpSt = Jump <$> lexem idf
+jumpSt = Jump <$> lexem identifierString
 
 stopSt :: Parser Statement
 stopSt = do
@@ -99,7 +117,7 @@ condSt :: Parser Statement
 condSt = do
   reserved "P"
   reserved "{"
-  ifExp <- exprA
+  ifExp <- expression
   reserved "}"
   reserved "("
   thenSt <- statement
@@ -110,7 +128,7 @@ condSt = do
 
 parseLabel :: Parser String
 parseLabel = do
-  label <- lexem idf
+  label <- lexem identifierString
   reserved "..."
   return label
 
