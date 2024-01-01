@@ -85,9 +85,7 @@ evalDerefAssign derefCount firstAddr rhsVal ms =
 runStatement :: Statement -> ProgramState -> LabelDict -> IO (ProgramState, Maybe Infinitable)
 runStatement (Assignment (Var name) rhsExp) ps@(ms, vs) _ =
   let rhsVal = evalExp rhsExp ps
-      addr = case Data.Map.lookup name vs of
-        Just existingAddr -> existingAddr
-        Nothing -> allocMem ms
+      addr = fromMaybe (allocMem ms) (Data.Map.lookup name vs)
       updatedPs = (updateMem addr rhsVal ms, updateVars name addr vs)
    in pure (updatedPs, Nothing)
 --
