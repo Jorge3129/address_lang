@@ -1,0 +1,7 @@
+П f {a, delta}
+П f {b, delta1}
+П f {'delta + 'delta1, delta}
+!
+f ... Ø .=> phi, Ø .=> psi
+P { 'phi < 0 } (cos 'phi - 1 .=> 'psi | 'phi*'phi => 'psi)
+ᗺ

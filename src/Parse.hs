@@ -82,6 +82,7 @@ statement :: Parser Statement
 statement =
   stopSt
     <|> try printSt
+    <|> try subProgCallSt
     <|> try condSt
     <|> try sendSt
     <|> try assignSt
@@ -106,6 +107,15 @@ assignSt = do
   lhs <- assignLhs
   reserved "="
   Assignment lhs <$> expression
+
+subProgCallSt :: Parser Statement
+subProgCallSt = do
+  reserved "П"
+  name <- lexem identifierString
+  reserved "{"
+  args <- expression `sepBy` reserved ","
+  reserved "}"
+  return $ SubprogramCall name args Nothing
 
 jumpSt :: Parser Statement
 jumpSt = Jump <$> lexem identifierString

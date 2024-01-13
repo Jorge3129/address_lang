@@ -2,6 +2,8 @@
 
 module AST where
 
+import Data.List (intercalate)
+
 data BinOp = Add | Sub | Mul | Div | Less | Equal deriving (Eq)
 
 instance Show BinOp where
@@ -32,20 +34,21 @@ data Statement
   | Send Expr Expr
   | Exchange Expr Expr
   | Conditional Expr Statement Statement
-  | SubprogramCall [Expr] String (Maybe String)
+  | SubprogramCall String [Expr] (Maybe String)
   | Print Expr
   | Jump String
   | Stop
 
 instance Show Statement where
   show (Assignment ex1 ex2) = show ex1 ++ " = " ++ show ex2
-  show (Send ex1 ex2) = show ex1 ++ " => " ++ show ex2
+  show (Send ex1 ex2) = show ex1 ++ " .=> " ++ show ex2
   show (Exchange ex1 ex2) = show ex1 ++ " <=> " ++ show ex2
-  show (SubprogramCall args name ret) =
-    "П { "
-      ++ foldl (\acc arg -> acc ++ (if acc == "" then "" else ", ") ++ show arg) "" args
-      ++ " } "
+  show (SubprogramCall name args ret) =
+    "П "
       ++ name
+      ++ " { "
+      ++ intercalate ", " (map show args)
+      ++ " } "
       ++ maybe "" (" " ++) ret
   show (Conditional ifExp thenSt elseSt) =
     "P { "
@@ -64,7 +67,7 @@ data ProgLine = ProgLine (Maybe String) [Statement]
 instance Show ProgLine where
   show (ProgLine maybeLabel stmts) =
     maybe "" (++ " ... ") maybeLabel
-      ++ foldl (\acc stmt -> acc ++ (if acc == "" then "" else "; ") ++ show stmt) "" stmts
+      ++ intercalate "; " (map show stmts)
 
 newtype Program = Program [ProgLine]
 
