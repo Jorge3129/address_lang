@@ -51,18 +51,8 @@ cmpOpA =
   infOp "==" (BinOpApp Equal)
     <|> infOp "<" (BinOpApp Less)
 
-deref :: Parser Expr
-deref = do string "'"; Deref <$> parens expression
-
 deref' :: Parser Expr -> Parser Expr
 deref' p = do string "'"; Deref <$> p
-
-mulDeref :: Parser Expr
-mulDeref = do
-  string "`"
-  n <- lexem number
-  string "`"
-  MulDeref n <$> parens expression
 
 mulDeref' :: Parser Expr -> Parser Expr
 mulDeref' p = do
@@ -89,7 +79,13 @@ primaryExpr = constant <|> identifier <|> parens expression
 
 -- STATEMENTS
 statement :: Parser Statement
-statement = stopSt <|> try printSt <|> try condSt <|> try assignSt <|> jumpSt
+statement =
+  stopSt
+    <|> try printSt
+    <|> try condSt
+    <|> try sendSt
+    <|> try assignSt
+    <|> jumpSt
 
 printSt :: Parser Statement
 printSt = do
@@ -98,6 +94,12 @@ printSt = do
 
 assignLhs :: Parser Expr
 assignLhs = lexem $ identifier <|> deref' unaryExpr <|> mulDeref' unaryExpr
+
+sendSt :: Parser Statement
+sendSt = do
+  lhs <- try expression
+  reserved ".=>"
+  Send lhs <$> assignLhs
 
 assignSt :: Parser Statement
 assignSt = do
@@ -115,8 +117,7 @@ stopSt = do
 
 condSt :: Parser Statement
 condSt = do
-  reserved "P"
-  reserved "{"
+  reserved "P" >> reserved "{"
   ifExp <- expression
   reserved "}"
   reserved "("

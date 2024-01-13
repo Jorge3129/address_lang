@@ -7,4 +7,6 @@ main :: IO ()
 main = do
   args <- getArgs
   let fileName = head args
-  runFile fileName
+  res <- runFile fileName
+  print res
+  return ()

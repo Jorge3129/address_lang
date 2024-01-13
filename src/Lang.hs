@@ -8,6 +8,11 @@ import Data.Maybe (fromMaybe, isJust)
 import MyUtils
 import ProgState
 
+readMem :: Int -> ProgState -> Int
+readMem addr (ProgState ms _) = case Data.Map.lookup addr ms of
+  Just val -> val
+  Nothing -> error ("Address " ++ show addr ++ " has no value in memory.")
+
 evalExp :: Expr -> ProgState -> Int
 evalExp (Lit val) _ = val
 --

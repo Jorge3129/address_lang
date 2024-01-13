@@ -1,0 +1,7 @@
+a ... P { 'alpha < 'beta } (b | c)
+b ... 'beta - 'alpha .=> beta
+c ... P { 'alpha == 'beta } (d | e)
+d ... 'alpha .=> gamma
+!
+e ... 'alpha - 'beta .=> alpha
+a
