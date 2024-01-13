@@ -49,6 +49,7 @@ evalExp (MulDeref derefCount innerExp) ps =
         else evalExp (MulDeref (cnt - 1) (Lit fstDerefVal)) ps
   where
     fstDerefVal = evalExp (Deref innerExp) ps
+evalExp Nil _ = error "Null expression evaluation"
 
 allocMem :: MemoryState -> Int
 allocMem ms

@@ -43,6 +43,9 @@ identifierString = do
 identifier :: Parser Expr
 identifier = Var <$> lexem identifierString
 
+nil :: Parser Expr
+nil = reserved "Nil" >> return Nil
+
 -- ARITHMETIC
 addopA, mulopA, cmpOpA :: Parser (Expr -> Expr -> Expr)
 addopA = infOp "+" (BinOpApp Add) <|> infOp "-" (BinOpApp Sub)
@@ -75,7 +78,7 @@ unaryExpr :: Parser Expr
 unaryExpr = deref' unaryExpr <|> mulDeref' unaryExpr <|> primaryExpr
 
 primaryExpr :: Parser Expr
-primaryExpr = constant <|> identifier <|> parens expression
+primaryExpr = try nil <|> constant <|> identifier <|> parens expression
 
 -- STATEMENTS
 statement :: Parser Statement
@@ -110,7 +113,7 @@ assignSt = do
 
 subProgCallSt :: Parser Statement
 subProgCallSt = do
-  reserved "П"
+  reserved "Pg"
   name <- lexem identifierString
   reserved "{"
   args <- expression `sepBy` reserved ","
@@ -121,9 +124,7 @@ jumpSt :: Parser Statement
 jumpSt = Jump <$> lexem identifierString
 
 stopSt :: Parser Statement
-stopSt = do
-  reserved "!"
-  return Stop
+stopSt = reserved "!" >> return Stop
 
 condSt :: Parser Statement
 condSt = do
@@ -137,22 +138,19 @@ condSt = do
   reserved ")"
   return (Conditional ifExp thenSt elseSt)
 
-parseLabel :: Parser String
-parseLabel = do
-  label <- lexem identifierString
-  reserved "..."
-  return label
+lineLabel :: Parser String
+lineLabel = lexem identifierString <* reserved "..."
+
+stmtListBy :: String -> Parser [Statement]
+stmtListBy sep = statement `sepBy` reserved sep
 
 parseLine :: Parser ProgLine
 parseLine = do
-  mbLabel <- optionMaybe (try parseLabel)
-  stmts <- statement `sepBy` reserved ";"
-  return (ProgLine mbLabel stmts)
+  mbLabel <- optionMaybe (try lineLabel)
+  ProgLine mbLabel <$> stmtListBy ";"
 
 parseProg :: Parser Program
-parseProg = do
-  pLines <- parseLine `sepBy` endOfLine
-  return (Program pLines)
+parseProg = Program <$> parseLine `sepBy` endOfLine
 
 full :: Parser a -> Parser a
 full p = do _ <- spaces; v <- p; eof; return v

@@ -20,6 +20,7 @@ data Expr
   | BinOpApp BinOp Expr Expr
   | Deref Expr
   | MulDeref Int Expr
+  | Nil
   deriving (Eq)
 
 instance Show Expr where
@@ -28,6 +29,7 @@ instance Show Expr where
   show (BinOpApp op a b) = show a ++ " " ++ show op ++ " " ++ show b
   show (Deref expr) = "'(" ++ show expr ++ ")"
   show (MulDeref n expr) = "`" ++ show n ++ "`(" ++ show expr ++ ")"
+  show Nil = "NIL"
 
 data Statement
   = Assignment Expr Expr
@@ -44,7 +46,7 @@ instance Show Statement where
   show (Send ex1 ex2) = show ex1 ++ " .=> " ++ show ex2
   show (Exchange ex1 ex2) = show ex1 ++ " <=> " ++ show ex2
   show (SubprogramCall name args ret) =
-    "П "
+    "Pg "
       ++ name
       ++ " { "
       ++ intercalate ", " (map show args)
