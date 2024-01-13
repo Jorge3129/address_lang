@@ -4,13 +4,14 @@ import AST
 import Data.Map qualified
 import Lang
 import Parse
+import ProgState (ProgState (ProgState))
 import System.Environment
 import System.IO
 
 runFile :: FilePath -> IO ()
 runFile fileName = do
   progTree <- parseOrThrow parseProg <$> readFile fileName
-  result <- runProgram progTree (Data.Map.empty, Data.Map.empty)
+  result <- runProgram progTree $ ProgState Data.Map.empty Data.Map.empty
   print result
 
 runBaseFile :: String -> IO ()

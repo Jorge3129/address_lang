@@ -3,26 +3,15 @@
 module Lang where
 
 import AST
-import Data.Map (Map, fromList, insert, keys, lookup, null)
+import Data.Map (fromList, insert, keys, lookup, null)
 import Data.Maybe (fromMaybe, isJust)
 import MyUtils
+import ProgState
 
-type MemoryState = Map Int Int
-
-type VarState = Map String Int
-
-type ProgramState = (MemoryState, VarState)
-
-type LabelDict = Map String Int
-
-boolToInt :: Bool -> Int
-boolToInt True = 1
-boolToInt False = 0
-
-evalExp :: Expr -> ProgramState -> Int
+evalExp :: Expr -> ProgState -> Int
 evalExp (Lit val) _ = val
 --
-evalExp (Var name) (ms, vs) = case Data.Map.lookup name vs of
+evalExp (Var name) (ProgState ms vs) = case Data.Map.lookup name vs of
   Just addr -> case Data.Map.lookup addr ms of
     Just val -> val
     Nothing -> error ("Variable " ++ name ++ " has no value in memory.")
@@ -39,7 +28,7 @@ evalExp (BinOpApp op lhs rhs) ps = binOp $ case op of
     binOp :: (Int -> Int -> a) -> a
     binOp f = f (evalExp lhs ps) (evalExp rhs ps)
 --
-evalExp (Deref expr) ps@(ms, _) =
+evalExp (Deref expr) ps@(ProgState ms _) =
   let addr = evalExp expr ps
    in case Data.Map.lookup addr ms of
         Just val -> val
@@ -82,30 +71,30 @@ evalDerefAssign derefCount firstAddr rhsVal ms =
    in updateMem finalAddr rhsVal updatedMem
 
 -- Execute statement
-runStatement :: Statement -> ProgramState -> LabelDict -> IO (ProgramState, Maybe Infinitable)
-runStatement (Assignment (Var name) rhsExp) ps@(ms, vs) _ =
+runStatement :: Statement -> ProgState -> LabelDict -> IO (ProgState, Maybe Infinitable)
+runStatement (Assignment (Var name) rhsExp) ps@(ProgState ms vs) _ =
   let rhsVal = evalExp rhsExp ps
       addr = fromMaybe (allocMem ms) (Data.Map.lookup name vs)
-      updatedPs = (updateMem addr rhsVal ms, updateVars name addr vs)
+      updatedPs = ProgState (updateMem addr rhsVal ms) (updateVars name addr vs)
    in pure (updatedPs, Nothing)
 --
-runStatement (Assignment (Deref derefExp) rhsExp) ps@(ms, vs) _ =
+runStatement (Assignment (Deref derefExp) rhsExp) ps@(ProgState ms vs) _ =
   let rhsVal = evalExp rhsExp ps
       (innerExp, derefCount) = countDerefs derefExp 1
       firstAddr = evalExp innerExp ps
       finalMem = evalDerefAssign derefCount firstAddr rhsVal ms
-   in pure ((finalMem, vs), Nothing)
+   in pure (ProgState finalMem vs, Nothing)
 --
-runStatement (Assignment (MulDeref derefCount innerExp) rhsExp) ps@(ms, vs) _ =
+runStatement (Assignment (MulDeref derefCount innerExp) rhsExp) ps@(ProgState ms vs) _ =
   let rhsVal = evalExp rhsExp ps
       firstAddr = evalExp innerExp ps
       finalMem = evalDerefAssign derefCount firstAddr rhsVal ms
-   in pure ((finalMem, vs), Nothing)
+   in pure (ProgState finalMem vs, Nothing)
 --
-runStatement (Send valExp addrExp) ps@(ms, vs) _ =
+runStatement (Send valExp addrExp) ps@(ProgState ms vs) _ =
   let rhsVal = evalExp valExp ps
       addr = evalExp addrExp ps
-   in pure ((updateMem addr rhsVal ms, vs), Nothing)
+   in pure (ProgState (updateMem addr rhsVal ms) vs, Nothing)
 --
 runStatement Stop ps _ = pure (ps, Just PosInf)
 --
@@ -132,7 +121,7 @@ updateVars = insert
 updateMem :: Int -> Int -> MemoryState -> MemoryState
 updateMem = insert
 
-runProgLine' :: ProgLine -> ProgramState -> LabelDict -> IO (ProgramState, Maybe Infinitable)
+runProgLine' :: ProgLine -> ProgState -> LabelDict -> IO (ProgState, Maybe Infinitable)
 runProgLine' (ProgLine _ stmts) ps labelDict = do
   let stmtCount = length stmts
   (_, updatedPs, jumpToLn) <-
@@ -146,10 +135,10 @@ runProgLine' (ProgLine _ stmts) ps labelDict = do
       (0, ps, Nothing)
   return (updatedPs, jumpToLn)
 
-runProgLine :: ProgLine -> ProgramState -> LabelDict -> IO ProgramState
+runProgLine :: ProgLine -> ProgState -> LabelDict -> IO ProgState
 runProgLine pl ps labelDict = fmap fst (runProgLine' pl ps labelDict)
 
-runProgram :: Program -> ProgramState -> IO ProgramState
+runProgram :: Program -> ProgState -> IO ProgState
 runProgram (Program pLines) ps = do
   let labels = map (\(ProgLine lbl _) -> fromMaybe "" lbl) pLines
       labelDict = fromList $ zip labels [0 ..]
@@ -161,7 +150,7 @@ runProgram (Program pLines) ps = do
       (Reg 0, ps)
   return finalState
 
-runProgramStep :: [ProgLine] -> LabelDict -> (Infinitable, ProgramState) -> IO (Infinitable, ProgramState)
+runProgramStep :: [ProgLine] -> LabelDict -> (Infinitable, ProgState) -> IO (Infinitable, ProgState)
 runProgramStep pLines labelDict (Reg lineIndex, curProgState) = do
   let pLine = pLines !! lineIndex
   (newProgState, jumpToLine) <- runProgLine' pLine curProgState labelDict
