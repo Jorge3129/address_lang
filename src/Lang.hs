@@ -41,10 +41,14 @@ evalExp (Deref expr) ps@(ProgState ms _) =
 --
 evalExp (MulDeref derefCount innerExp) ps =
   case derefCount of
-    1 -> innerExpVal
-    cnt -> evalExp (MulDeref (cnt - 1) (Lit innerExpVal)) ps
+    0 -> evalExp innerExp ps
+    1 -> fstDerefVal
+    cnt ->
+      if cnt < 0
+        then error "Cannot do negative dereference"
+        else evalExp (MulDeref (cnt - 1) (Lit fstDerefVal)) ps
   where
-    innerExpVal = evalExp (Deref innerExp) ps
+    fstDerefVal = evalExp (Deref innerExp) ps
 
 allocMem :: MemoryState -> Int
 allocMem ms
@@ -89,6 +93,9 @@ runStatement (Assignment (Deref derefExp) rhsExp) ps@(ProgState ms vs) _ =
       firstAddr = evalExp innerExp ps
       finalMem = evalDerefAssign derefCount firstAddr rhsVal ms
    in pure (ProgState finalMem vs, Nothing)
+--
+runStatement (Assignment (MulDeref 0 (Var name)) rhsExp) ps labelDict =
+  runStatement (Assignment (Var name) rhsExp) ps labelDict
 --
 runStatement (Assignment (MulDeref derefCount innerExp) rhsExp) ps@(ProgState ms vs) _ =
   let rhsVal = evalExp rhsExp ps

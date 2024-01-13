@@ -11,6 +11,7 @@ import System.IO
 runFile :: FilePath -> IO ProgState
 runFile fileName = do
   progTree <- parseOrThrow parseProg <$> readFile fileName
+  print progTree
   runProgram progTree $ ProgState Data.Map.empty Data.Map.empty
 
 runFile1 :: FilePath -> ProgState -> IO ProgState
