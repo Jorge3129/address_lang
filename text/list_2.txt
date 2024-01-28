@@ -13,6 +13,10 @@ printList 'h
 'arg1 = h; 'arg2 = 3; 'ret = 3; listAdd
 l3 ...
 printList 'h
+myRes1 = 10000
+'arg1 = h; arg2 = myRes1; 'ret = 4; listLen
+l4 ...
+print 'myRes1
 print 101
 !
 listAdd ...
@@ -25,3 +29,18 @@ listAddLoopThen ...
 next
 listAddLoopElse ... curHead = 'curHead; listAddLoop
 next ... Cj 'ret
+!
+listLen ...
+curHead1 = 'arg1; listLenRes = arg2
+listLenCnt = 0
+listLenLoop ...
+P { 'curHead1 == 0 } (listLenLoopThen | listLenLoopElse)
+listLenLoopThen ...
+next1
+listLenLoopElse ...
+listLenCnt = listLenCnt + 1
+curHead1 = 'curHead1
+listLenLoop
+next1 ...
+'listLenRes = listLenCnt
+Cj 'ret
