@@ -1,0 +1,27 @@
+arg1 = 1000; arg2 = 1010; ret = 1020
+h = 2000
+start ...
+maxTail = 5000
+'h = 0
+printList 'h
+'arg1 = h; 'arg2 = 1; 'ret = 1; listAdd
+l1 ...
+printList 'h
+'arg1 = h; 'arg2 = 2; 'ret = 2; listAdd
+l2 ...
+printList 'h
+'arg1 = h; 'arg2 = 3; 'ret = 3; listAdd
+l3 ...
+printList 'h
+print 101
+!
+listAdd ...
+laList = 'arg1; laElement = 'arg2
+curHead = laList
+listAddLoop ...
+P { 'curHead == 0 } (listAddLoopThen | listAddLoopElse)
+listAddLoopThen ...
+'curHead = maxTail; ''curHead = 0; '('curHead + 1) = laElement; maxTail = maxTail + 100
+next
+listAddLoopElse ... curHead = 'curHead; listAddLoop
+next ... Cj 'ret

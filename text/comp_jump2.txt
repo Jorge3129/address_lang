@@ -1,0 +1,12 @@
+arg1 = 50
+ret = 60
+a = 100
+'a = 0
+'arg1 = a; 'ret = 1; foo
+l1 ... print 'a
+'arg1 = a; 'ret = 2; foo
+l2 ... print 'a
+!
+foo ...
+''arg1 = ''arg1 + 1
+Cj 'ret

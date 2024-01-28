@@ -85,11 +85,15 @@ statement :: Parser Statement
 statement =
   stopSt
     <|> try builtinFuncSt
+    <|> try compJumpSt
     <|> try subProgCallSt
     <|> try condSt
     <|> try sendSt
     <|> try assignSt
-    <|> jumpSt
+    <|> try jumpSt
+
+compJumpSt :: Parser Statement
+compJumpSt = reserved "Cj" >> CompJump <$> expression
 
 builtinFuncSt :: Parser Statement
 builtinFuncSt = try printListSt <|> try printSt

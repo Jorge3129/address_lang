@@ -8,10 +8,13 @@ import Data.Maybe (fromMaybe, isJust)
 import MyUtils
 import ProgState
 
-readMem :: Int -> ProgState -> Int
-readMem addr (ProgState ms _) = case Data.Map.lookup addr ms of
+readMem :: Int -> MemoryState -> Int
+readMem addr ms = case readMemMaybe addr ms of
   Just val -> val
   Nothing -> error ("Address " ++ show addr ++ " has no value in memory.")
+
+readMemMaybe :: Int -> MemoryState -> Maybe Int
+readMemMaybe = Data.Map.lookup
 
 evalExp :: Expr -> ProgState -> Int
 evalExp (Lit val) _ = val
@@ -71,15 +74,19 @@ evalDerefAssign derefCount firstAddr rhsVal ms =
   let (finalAddr, updatedMem) =
         if derefCount == 1
           then (firstAddr, ms)
-          else
-            foldl
-              ( \(prevAddr, mem) _ ->
-                  let newAddr = allocMem1 mem prevAddr
-                   in (newAddr, updateMem prevAddr newAddr mem)
-              )
-              (firstAddr, ms)
-              [1 .. (derefCount - 1)]
+          else foldl evalDerefAssignStep (firstAddr, ms) [1 .. (derefCount - 1)]
    in updateMem finalAddr rhsVal updatedMem
+
+evalDerefAssignStep :: (Int, MemoryState) -> Int -> (Int, MemoryState)
+evalDerefAssignStep (curAddr, mem) _ =
+  case readMemMaybe curAddr mem of
+    Nothing ->
+      let newAddr = allocMem1 mem curAddr
+       in (newAddr, updateMem curAddr newAddr mem)
+    (Just 0) ->
+      let newAddr = allocMem1 mem curAddr
+       in (newAddr, updateMem curAddr newAddr mem)
+    Just curVal -> (curVal, mem)
 
 runMulDerefAssign :: Int -> Expr -> Expr -> ProgState -> LabelDict -> IO (ProgState, Maybe Infinitable)
 runMulDerefAssign 0 (Var name) rhsExp ps labelDict = runStatement (Assignment (Var name) rhsExp) ps labelDict
@@ -115,6 +122,12 @@ runStatement (Send valExp addrExp) ps@(ProgState ms vs) _ =
 --
 runStatement Stop ps _ = pure (ps, Just PosInf)
 --
+runStatement (CompJump ex) ps labelDict =
+  let label = "l" ++ show (evalExp ex ps)
+   in case Data.Map.lookup label labelDict of
+        Just lineNum -> pure (ps, Just (Reg lineNum))
+        Nothing -> error ("Label " ++ show label ++ " not defined.")
+--
 runStatement (Jump label) ps labelDict =
   case Data.Map.lookup label labelDict of
     Just lineNum -> pure (ps, Just (Reg lineNum))
@@ -138,9 +151,9 @@ runStatement _ ps _ = pure (ps, Nothing)
 
 getPrintList :: Int -> ProgState -> [Int]
 getPrintList 0 _ = []
-getPrintList curNode ps =
-  let nextNode = readMem curNode ps
-      curVal = readMem (curNode + 1) ps
+getPrintList curNode ps@(ProgState ms _) =
+  let nextNode = readMem curNode ms
+      curVal = readMem (curNode + 1) ms
    in curVal : getPrintList nextNode ps
 
 updateVars :: String -> Int -> VarState -> VarState

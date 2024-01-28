@@ -39,6 +39,7 @@ data Statement
   | SubprogramCall String [Expr] (Maybe String)
   | BuiltinFunc String [Expr]
   | Jump String
+  | CompJump Expr
   | Stop
 
 instance Show Statement where
@@ -61,6 +62,7 @@ instance Show Statement where
       ++ show elseSt
       ++ ")"
   show Stop = "!"
+  show (CompJump ex) = show ex
   show (Jump label) = label
   show (BuiltinFunc name args) = name ++ " " ++ intercalate " " (map show args)
 

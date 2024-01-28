@@ -9,12 +9,12 @@ import Run (runBaseFile, runBaseFile1)
 myGcd :: Int -> Int -> IO Int
 myGcd a b = do
   let resultAddr = 130
-  resProgState <-
+  resProgState@(ProgState ms _) <-
     runBaseFile1 "gcd_1" $
       ProgState
         (fromList [(10, 110), (20, 120), (30, 130), (110, a), (120, b)])
         (fromList [("alpha", 10), ("beta", 20), ("gamma", 30)])
-  return $ readMem resultAddr resProgState
+  return $ readMem resultAddr ms
 
 testGcd :: IO ()
 testGcd = do
