@@ -39,15 +39,16 @@ evalExp (Deref expr) ps@(ProgState ms _) =
         Just val -> val
         Nothing -> error ("Memory at address " ++ show addr ++ " has no value.")
 --
-evalExp (MulDeref derefCount innerExp) ps =
+evalExp (MulDeref derefCountExp innerExp) ps =
   case derefCount of
     0 -> evalExp innerExp ps
     1 -> fstDerefVal
     cnt ->
       if cnt < 0
         then error "Cannot do negative dereference"
-        else evalExp (MulDeref (cnt - 1) (Lit fstDerefVal)) ps
+        else evalExp (MulDeref (Lit (cnt - 1)) (Lit fstDerefVal)) ps
   where
+    derefCount = evalExp derefCountExp ps
     fstDerefVal = evalExp (Deref innerExp) ps
 evalExp Nil _ = error "Null expression evaluation"
 
@@ -80,6 +81,14 @@ evalDerefAssign derefCount firstAddr rhsVal ms =
               [1 .. (derefCount - 1)]
    in updateMem finalAddr rhsVal updatedMem
 
+runMulDerefAssign :: Int -> Expr -> Expr -> ProgState -> LabelDict -> IO (ProgState, Maybe Infinitable)
+runMulDerefAssign 0 (Var name) rhsExp ps labelDict = runStatement (Assignment (Var name) rhsExp) ps labelDict
+runMulDerefAssign derefCount innerExp rhsExp ps@(ProgState ms vs) _ =
+  let rhsVal = evalExp rhsExp ps
+      firstAddr = evalExp innerExp ps
+      finalMem = evalDerefAssign derefCount firstAddr rhsVal ms
+   in pure (ProgState finalMem vs, Nothing)
+
 -- Execute statement
 runStatement :: Statement -> ProgState -> LabelDict -> IO (ProgState, Maybe Infinitable)
 runStatement (Assignment (Var name) rhsExp) ps@(ProgState ms vs) _ =
@@ -95,14 +104,9 @@ runStatement (Assignment (Deref derefExp) rhsExp) ps@(ProgState ms vs) _ =
       finalMem = evalDerefAssign derefCount firstAddr rhsVal ms
    in pure (ProgState finalMem vs, Nothing)
 --
-runStatement (Assignment (MulDeref 0 (Var name)) rhsExp) ps labelDict =
-  runStatement (Assignment (Var name) rhsExp) ps labelDict
---
-runStatement (Assignment (MulDeref derefCount innerExp) rhsExp) ps@(ProgState ms vs) _ =
-  let rhsVal = evalExp rhsExp ps
-      firstAddr = evalExp innerExp ps
-      finalMem = evalDerefAssign derefCount firstAddr rhsVal ms
-   in pure (ProgState finalMem vs, Nothing)
+runStatement (Assignment (MulDeref derefCountExpr innerExp) rhsExp) ps ld =
+  let derefCount = evalExp derefCountExpr ps
+   in runMulDerefAssign derefCount innerExp rhsExp ps ld
 --
 runStatement (Send valExp addrExp) ps@(ProgState ms vs) _ =
   let rhsVal = evalExp valExp ps

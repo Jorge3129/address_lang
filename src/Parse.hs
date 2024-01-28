@@ -60,7 +60,7 @@ deref' p = do string "'"; Deref <$> p
 mulDeref' :: Parser Expr -> Parser Expr
 mulDeref' p = do
   string "`"
-  n <- lexem number
+  n <- unaryExpr
   string "`"
   MulDeref n <$> parens p
 

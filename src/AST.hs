@@ -19,7 +19,7 @@ data Expr
   | Var String
   | BinOpApp BinOp Expr Expr
   | Deref Expr
-  | MulDeref Int Expr
+  | MulDeref Expr Expr
   | Nil
   deriving (Eq)
 
