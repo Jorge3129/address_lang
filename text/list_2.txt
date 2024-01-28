@@ -24,19 +24,14 @@ listLenLoopElse ... listLenCnt = listLenCnt + 1; curHead1 = 'curHead1; listLenLo
 next1 ... 'listLenRes = listLenCnt; Cj 'ret
 !
 main ...
-'h = 0
-printList 'h
+'h = 0; printList 'h
 'arg1 = h; 'arg2 = 1; 'ret = 1; listAdd
-l1 ...
-printList 'h
+l1 ... printList 'h
 'arg1 = h; 'arg2 = 2; 'ret = 2; listAdd
-l2 ...
-printList 'h
+l2 ... printList 'h
 'arg1 = h; 'arg2 = 3; 'ret = 3; listAdd
-l3 ...
-printList 'h
+l3 ... printList 'h
 myRes1 = 10000
 'arg1 = h; arg2 = myRes1; 'ret = 4; listLen
-l4 ...
-print 'myRes1
+l4 ... print 'myRes1
 print 101
