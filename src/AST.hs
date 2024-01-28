@@ -37,7 +37,7 @@ data Statement
   | Exchange Expr Expr
   | Conditional Expr Statement Statement
   | SubprogramCall String [Expr] (Maybe String)
-  | Print Expr
+  | BuiltinFunc String [Expr]
   | Jump String
   | Stop
 
@@ -62,7 +62,7 @@ instance Show Statement where
       ++ ")"
   show Stop = "!"
   show (Jump label) = label
-  show (Print ex) = "print " ++ show ex
+  show (BuiltinFunc name args) = name ++ " " ++ intercalate " " (map show args)
 
 data ProgLine = ProgLine (Maybe String) [Statement]
 

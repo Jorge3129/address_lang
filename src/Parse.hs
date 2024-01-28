@@ -84,17 +84,27 @@ primaryExpr = try nil <|> constant <|> identifier <|> parens expression
 statement :: Parser Statement
 statement =
   stopSt
-    <|> try printSt
+    <|> try builtinFuncSt
     <|> try subProgCallSt
     <|> try condSt
     <|> try sendSt
     <|> try assignSt
     <|> jumpSt
 
+builtinFuncSt :: Parser Statement
+builtinFuncSt = try printListSt <|> try printSt
+
 printSt :: Parser Statement
 printSt = do
   lexem (string "print")
-  Print <$> expression
+  ex <- expression
+  return $ BuiltinFunc "print" [ex]
+
+printListSt :: Parser Statement
+printListSt = do
+  lexem (string "printList")
+  ex <- expression
+  return $ BuiltinFunc "printList" [ex]
 
 assignLhs :: Parser Expr
 assignLhs = lexem $ identifier <|> deref' unaryExpr <|> mulDeref' unaryExpr

@@ -122,11 +122,22 @@ runStatement (Conditional ifExp thenSt elseSt) ps ld = runStatement st ps ld
       0 -> elseSt
       _ -> thenSt
 --
-runStatement (Print ex) ps _ = do
+runStatement (BuiltinFunc "print" [ex]) ps _ = do
   print $ evalExp ex ps
   return (ps, Nothing)
 --
+runStatement (BuiltinFunc "printList" [ex]) ps _ = do
+  print $ getPrintList (evalExp ex ps) ps
+  return (ps, Nothing)
+--
 runStatement _ ps _ = pure (ps, Nothing)
+
+getPrintList :: Int -> ProgState -> [Int]
+getPrintList 0 _ = []
+getPrintList curNode ps =
+  let nextNode = readMem curNode ps
+      curVal = readMem (curNode + 1) ps
+   in curVal : getPrintList nextNode ps
 
 updateVars :: String -> Int -> VarState -> VarState
 updateVars = insert
