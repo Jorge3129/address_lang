@@ -158,10 +158,17 @@ lineLabel = lexem identifierString <* reserved "..."
 stmtListBy :: String -> Parser [Statement]
 stmtListBy sep = statement `sepBy` reserved sep
 
+commentParser :: Parser String
+commentParser = do
+  char '#'
+  many (noneOf ['\n'])
+
 parseLine :: Parser ProgLine
 parseLine = do
   mbLabel <- optionMaybe (try lineLabel)
-  ProgLine mbLabel <$> stmtListBy ";"
+  stmts <- stmtListBy ";"
+  optionMaybe commentParser
+  return $ ProgLine mbLabel stmts
 
 parseProg :: Parser Program
 parseProg = Program <$> parseLine `sepBy` endOfLine

@@ -22,7 +22,7 @@ runFile1 fileName ps = do
   runProgram progTree ps
 
 runBaseFile :: String -> IO ProgState
-runBaseFile fileName = runFile ("../text/" ++ fileName ++ ".txt")
+runBaseFile fileName = runFile ("../text/" ++ fileName ++ ".adpl")
 
 runBaseFile1 :: String -> ProgState -> IO ProgState
-runBaseFile1 fileName = runFile1 ("../text/" ++ fileName ++ ".txt")
+runBaseFile1 fileName = runFile1 ("../text/" ++ fileName ++ ".adpl")

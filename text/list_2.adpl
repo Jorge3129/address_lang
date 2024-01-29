@@ -1,8 +1,10 @@
+# initialize global variables
 arg1 = 1000; arg2 = 1010; ret = 1020
 h = 2000
 maxTail = 5000
 main
-!
+
+# function for adding an element to the list
 listAdd ...
 laList = 'arg1; laElement = 'arg2
 curHead = laList
@@ -13,7 +15,8 @@ listAddLoopThen ...
 next
 listAddLoopElse ... curHead = 'curHead; listAddLoop
 next ... Cj 'ret
-!
+
+# function for finding the length of a list
 listLen ...
 curHead1 = 'arg1; listLenRes = arg2
 listLenCnt = 0
@@ -22,7 +25,8 @@ P { 'curHead1 == 0 } (listLenLoopThen | listLenLoopElse)
 listLenLoopThen ... next1
 listLenLoopElse ... listLenCnt = listLenCnt + 1; curHead1 = 'curHead1; listLenLoop
 next1 ... 'listLenRes = listLenCnt; Cj 'ret
-!
+
+# the main function
 main ...
 'h = 0; printList 'h
 'arg1 = h; 'arg2 = 1; 'ret = 1; listAdd
